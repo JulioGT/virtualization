@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <h1>Windows VM</h1>
+  <button id="btn">Ask Ubuntu</button>
+  <pre id="out">waiting...</pre>
+<script>
+  const UBUNTU = 'http://UBUNTU_IP:3000/api/hello';
+  document.getElementById('btn').onclick = async () => {
+    try {
+      const r = await fetch(UBUNTU);
+      const data = await r.json();
+      document.getElementById('out').textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      document.getElementById('out').textContent = 'Error: ' + e;
+    }
+  };
+</script>
+</body>
+</html>
