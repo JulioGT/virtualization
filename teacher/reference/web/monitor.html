@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VM Monitor</title>
+<style>
+  :root{--bg:#0A1628;--card:#12213A;--ink:#E8EEF7;--muted:#9FB0C8;--line:#243A5C;--blue:#7FB0FF;--ok:#4CC38A;--warn:#FFB454;--bad:#FF7B72}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+  header{padding:14px 20px;border-bottom:1px solid var(--line)} header h1{margin:0;font-size:1.3rem} header p{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+  #banner{display:none;max-width:1160px;margin:16px auto 0;padding:12px 16px;border-radius:8px;background:#4A1D1A;border:1px solid var(--bad);color:#FFD9D5;font-weight:600}
+  main{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;padding:20px;max-width:1200px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0}
+  .card.alert{border-color:var(--bad);box-shadow:0 0 0 2px var(--bad)}
+  h2{margin:0;font-size:1.1rem;text-transform:uppercase;letter-spacing:.06em;color:var(--blue)} .host{font:.78rem ui-monospace,Menlo,Consolas,monospace;color:var(--muted);margin-bottom:10px}
+  .meter{margin:8px 0} .meter .lab{display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted)} .meter .lab b{color:var(--ink);font-size:1.2rem;font-variant-numeric:tabular-nums}
+  .bar{position:relative;height:14px;background:#0A1628;border:1px solid var(--line);border-radius:4px} .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--ok);border-radius:3px;transition:width .4s}
+  .bar i.hi{background:var(--bad)} .bar u{position:absolute;top:-4px;bottom:-4px;width:2px;background:#fff;opacity:.8}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px} .chip{font-size:.8rem;padding:2px 10px;border-radius:99px;border:1px solid var(--line)} .chip.up{color:var(--ok);border-color:var(--ok)} .chip.down{color:var(--bad);border-color:var(--bad)}
+  .down-msg{color:var(--bad);font-weight:600;margin-top:6px}
+  .panel{max-width:1160px;margin:0 auto 24px;padding:0 20px} h3{font-size:.9rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .log div{font:.82rem ui-monospace,Menlo,Consolas,monospace;padding:3px 0;border-top:1px solid var(--line)} .log .a{color:var(--bad)} .log .r{color:var(--ok)}
+</style></head>
+<body>
+<header><h1>VM Monitor</h1><p>Real CPU and memory of each VM, read every second from its agent. Alert at <span id="thr"></span>% CPU on 2 samples in a row.</p></header>
+<div id="banner"></div>
+<main id="vms"></main>
+<div class="panel"><h3>Alert log</h3><div class="log" id="log"><div class="muted" style="color:var(--muted)">No alerts yet.</div></div></div>
+<script src="config.js"></script>
+<script>
+const THR = CONFIG.alertCpuPct, $ = id => document.getElementById(id), STATE = {};
+$('thr').textContent = THR;
+const SVCS = [['product', 3001], ['cart', 3002], ['payment', 3003]];
+async function get(url, ms) { const c = new AbortController(), t = setTimeout(() => c.abort(), ms), t0 = performance.now();
+  try { const r = await fetch(url, { signal: c.signal }); const j = await r.json(); return { ok: r.ok, j, ms: performance.now() - t0 }; } catch (e) { return { ok: false }; } finally { clearTimeout(t); } }
+function logAlert(cls, text) { const l = $('log'); if (l.firstElementChild && l.firstElementChild.classList.contains('muted')) l.innerHTML = '';
+  const d = document.createElement('div'); d.className = cls; d.textContent = new Date().toLocaleTimeString() + '  ' + text; l.prepend(d); }
+CONFIG.vms.forEach(v => STATE[v.name] = { high: 0, alerting: false, down: false });
+$('vms').innerHTML = CONFIG.vms.map(v => '<section class="card" id="card-' + v.name + '"><h2>' + v.name + '</h2><div class="host">' + v.host + '</div><div id="body-' + v.name + '">connecting…</div></section>').join('');
+
+async function poll(v) {
+  const [m, ...h] = await Promise.all([get('http://' + v.host + ':9100/metrics', 1500), ...SVCS.map(([n, p]) => get('http://' + v.host + ':' + p + '/health', 1500))]);
+  const st = STATE[v.name], card = $('card-' + v.name), body = $('body-' + v.name);
+  const chips = '<div class="chips">' + SVCS.map(([n], i) => '<span class="chip ' + (h[i].ok ? 'up' : 'down') + '">' + n + (h[i].ok ? ' · ' + Math.round(h[i].ms) + ' ms' : ' · down') + '</span>').join('') + '</div>';
+  if (!m.ok) {
+    if (!st.down) { st.down = true; logAlert('a', v.name + ' is not answering (agent unreachable)'); }
+    st.high = 0; st.alerting = false; card.classList.add('alert');
+    body.innerHTML = '<div class="down-msg">No answer from ' + v.host + ':9100</div>' + chips; return;
+  }
+  if (st.down) { st.down = false; logAlert('r', v.name + ' is answering again'); }
+  const cpu = m.j.cpuPct, mem = m.j.memPct;
+  st.high = cpu >= THR ? st.high + 1 : 0;
+  if (st.high >= 2 && !st.alerting) { st.alerting = true; logAlert('a', 'ALERT ' + v.name + ': CPU ' + cpu + '% (threshold ' + THR + '%)'); }
+  if (st.alerting && cpu < THR) { st.alerting = false; logAlert('r', v.name + ': CPU back to ' + cpu + '%'); }
+  card.classList.toggle('alert', st.alerting);
+  const meter = (label, val, thr) => '<div class="meter"><div class="lab"><span>' + label + '</span><b>' + val + '%</b></div><div class="bar"><i class="' + (val >= THR ? 'hi' : '') + '" style="width:' + Math.min(100, val) + '%"></i>' + (thr ? '<u style="left:' + THR + '%"></u>' : '') + '</div></div>';
+  body.innerHTML = meter('CPU', cpu, true) + meter('Memory', mem, false) + '<div class="lab" style="color:var(--muted);font-size:.85rem">load ' + m.j.load1 + ' · ' + m.j.cores + ' vCPU · host ' + m.j.host + '</div>' + chips;
+}
+function banner() { const a = CONFIG.vms.filter(v => STATE[v.name].alerting).map(v => v.name), d = CONFIG.vms.filter(v => STATE[v.name].down).map(v => v.name), b = $('banner');
+  const parts = []; if (a.length) parts.push('CPU ALERT on ' + a.join(', ')); if (d.length) parts.push('NOT ANSWERING: ' + d.join(', '));
+  b.style.display = parts.length ? 'block' : 'none'; b.textContent = parts.join('  |  '); }
+async function tick() { await Promise.all(CONFIG.vms.map(poll)); banner(); }
+tick(); setInterval(tick, 1000);
+</script></body></html>
