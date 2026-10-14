@@ -70,8 +70,12 @@ function burn(ms) {
 
 Call `burn(30)` in payment, `burn(10)` in product, `burn(5)` in cart, **after** `/health` has been handled. This is what makes the load tests in Stage 4 meaningful: one payment process can serve at most 1000 / 30 = about 33 requests per second.
 
-## Prompt you can paste into your AI assistant
+## Prompts for your AI assistant (the easy way)
 
-> Write one Node.js program for Node 18, using only built-in modules (`http`, `fs`, `os`). No npm packages, no Express. Use `http.createServer`. Follow the contract below exactly: port, paths, JSON shapes, status codes, CORS headers, `/health`, one log line per request, and the simulated CPU work (the `burn` function). Listen on `0.0.0.0`. Never crash on a bad request. Accept an optional port number as the first command-line argument (`process.argv[2]`). [Paste the section for ONE service here.]
+The folder `prompts/` has one ready-made prompt per program: `product.txt`, `cart.txt`, `payment.txt`, `agent.txt`.
+Open one, copy ALL of it, paste it into your AI, save the answer as `product.js` (and so on), then run the checker:
 
-Ask for **one program per service** (`product.js`, `cart.js`, `payment.js`, `agent.js`). Run the checker after each one: `node contract-check.js <VM-IP>` (add `--agent` for the agent). Use the VM's own IP, not `localhost`: that also catches a program that listens only on 127.0.0.1.
+    node contract-check.js <VM-IP>            (add --agent for the agent)
+
+Use the VM's own IP, not `localhost`: that also catches a program that listens only on 127.0.0.1.
+If a check fails, paste the FAIL line and its `->` hint back to your AI and ask for a fix.

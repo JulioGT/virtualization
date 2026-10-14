@@ -1,0 +1,33 @@
+Write ONE Node.js program for Node 18, to be saved as payment.js.
+Use only built-in modules (http, fs, os). No npm packages, no Express. Use http.createServer.
+Listen on 0.0.0.0, port 3003. Accept an optional port number as the first command-line argument (process.argv[2]).
+Never crash on a bad request.
+
+Rules for EVERY response:
+- The body is JSON, with header Content-Type: application/json.
+- Add these headers to every response:
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS
+    Access-Control-Allow-Headers: Content-Type
+- Any OPTIONS request (any path) answers 204 with those same headers.
+- GET /health answers 200 with {"service": "payment", "status": "ok"} and does no simulated work.
+- Print ONE line per request in the terminal: time, method, path, status.
+- A bad request (for example invalid JSON) answers 400 with {"error": "..."}.
+
+What this service does (name: payment):
+
+POST /pay with JSON body {"amount": 19.8, "card": "4242424242424242"}
+  -> 200 {"status": "approved", "id": "pay-1", "amount": 19.8}
+  The id changes with every payment (pay-1, pay-2, ...).
+POST /pay with amount 0 or less (or not a number), or a card shorter than 4 characters
+  -> 400 {"status": "declined", "error": "..."}
+Any other path -> 404 {"error": "not found"}.
+
+Simulated CPU work: for every request EXCEPT /health and OPTIONS, call burn(30) before building the answer. Use exactly this function:
+
+function burn(ms) {
+  const end = process.hrtime.bigint() + BigInt(Math.round(ms * 1e6));
+  while (process.hrtime.bigint() < end) { /* busy */ }
+}
+
+Return only the complete code of payment.js, no explanations.

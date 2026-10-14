@@ -1,0 +1,37 @@
+Write ONE Node.js program for Node 18, to be saved as cart.js.
+Use only built-in modules (http, fs, os). No npm packages, no Express. Use http.createServer.
+Listen on 0.0.0.0, port 3002. Accept an optional port number as the first command-line argument (process.argv[2]).
+Never crash on a bad request.
+
+Rules for EVERY response:
+- The body is JSON, with header Content-Type: application/json.
+- Add these headers to every response:
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS
+    Access-Control-Allow-Headers: Content-Type
+- Any OPTIONS request (any path) answers 204 with those same headers.
+- GET /health answers 200 with {"service": "cart", "status": "ok"} and does no simulated work.
+- Print ONE line per request in the terminal: time, method, path, status.
+- A bad request (for example invalid JSON) answers 400 with {"error": "..."}.
+
+What this service does (name: cart):
+
+One shared cart, kept in memory.
+GET /cart
+  -> 200 {"items": [ {"productId": "p1", "qty": 2} ]}
+POST /cart with JSON body {"productId": "p1", "qty": 1}
+  -> 201 and the whole cart as above.
+  If the productId is already in the cart, ADD to its qty (2 + 1 = 3).
+  qty must be an integer of 1 or more and productId a non-empty string, otherwise 400 {"error": "..."}.
+DELETE /cart
+  -> 200 {"items": []}
+Any other path -> 404 {"error": "not found"}.
+
+Simulated CPU work: for every request EXCEPT /health and OPTIONS, call burn(5) before building the answer. Use exactly this function:
+
+function burn(ms) {
+  const end = process.hrtime.bigint() + BigInt(Math.round(ms * 1e6));
+  while (process.hrtime.bigint() < end) { /* busy */ }
+}
+
+Return only the complete code of cart.js, no explanations.

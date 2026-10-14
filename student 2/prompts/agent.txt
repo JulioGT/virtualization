@@ -1,0 +1,30 @@
+Write ONE Node.js program for Node 18, to be saved as agent.js.
+Use only built-in modules (http, fs, os). No npm packages, no Express. Use http.createServer.
+Listen on 0.0.0.0, port 9100. Accept an optional port number as the first command-line argument (process.argv[2]).
+Never crash on a bad request.
+
+Rules for EVERY response:
+- The body is JSON, with header Content-Type: application/json.
+- Add these headers to every response:
+    Access-Control-Allow-Origin: *
+    Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS
+    Access-Control-Allow-Headers: Content-Type
+- Any OPTIONS request (any path) answers 204 with those same headers.
+- GET /health answers 200 with {"service": "agent", "status": "ok"} and does no simulated work.
+- Print ONE line per request in the terminal: time, method, path, status.
+- A bad request (for example invalid JSON) answers 400 with {"error": "..."}.
+
+What this service does (name: agent). It reports how busy THIS machine is. It does NO simulated work (no burn).
+
+GET /metrics
+  -> 200 {"host": "vm-a", "cpuPct": 12.5, "memPct": 31.0, "load1": 0.2, "cores": 1}
+Any other path -> 404 {"error": "not found"}.
+
+How to compute the values (Linux only):
+- host: os.hostname()
+- cpuPct: how busy the WHOLE machine is, 0 to 100, rounded to 1 decimal. Read the first line of /proc/stat (the line starting with "cpu"). Use setInterval to take a new reading every 1000 ms. busy share = 100 * (1 - (idle change / total change)) between two readings, where idle = idle + iowait (4th and 5th numbers) and total = sum of all the numbers. Keep the latest value in a variable and return it on each request.
+- memPct: 100 * (1 - MemAvailable / MemTotal), from /proc/meminfo, rounded to 1 decimal.
+- load1: the first number in /proc/loadavg, as a number.
+- cores: os.cpus().length
+
+Return only the complete code of agent.js, no explanations.

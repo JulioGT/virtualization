@@ -39,10 +39,10 @@ if command -v node >/dev/null 2>&1; then
   if [ "${NODE_MAJOR:-0}" -ge 18 ]; then
     ok "node $(node -v) (18 or newer needed)"
   else
-    bad "node is older than 18: $(node -v). Fix at home with internet:  sudo apt update && sudo apt install -y nodejs"
+    bad "node is older than 18: $(node -v). (Ubuntu 22.04 installs v12 with apt.) Fix at home with internet:  curl -fsSL https://deb.nodesource.com/setup_22.x -o nodesource_setup.sh && sudo -E bash nodesource_setup.sh && sudo apt install -y nodejs"
   fi
 else
-  bad "node not found. Fix at home with internet:  sudo apt update && sudo apt install -y nodejs"
+  bad "node not found. Fix at home with internet:  sudo apt update && sudo apt install -y nodejs   (then run  node -v : it must be 18 or newer; if it is older, see the line printed when that happens)"
 fi
 
 command -v curl >/dev/null 2>&1 && ok "curl is installed" || bad "curl not found. Fix at home with internet:  sudo apt update && sudo apt install -y curl"
